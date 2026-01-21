@@ -1,0 +1,20 @@
+{
+  "mode": "offline",
+  "model": "tiny",
+  "language": "auto",
+  "output_format": "json",
+  "audio": {
+    "sample_rate": 16000,
+    "channels": 1,
+    "chunk_duration": 5
+  },
+  "paths": {
+    "models": "engine/models",
+    "output": "output/transcripts",
+    "temp": "output/temp"
+  },
+  "performance": {
+    "threads": 4,
+    "use_gpu": false
+  }
+}

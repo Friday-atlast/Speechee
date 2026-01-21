@@ -1,0 +1,48 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Models (large files)
+engine/models/*.bin
+engine/models/*.ggml
+
+# Whisper.cpp build artifacts
+engine/whisper.cpp/build/
+engine/whisper.cpp/main
+engine/whisper.cpp/*.o
+
+# Audio temp files
+output/*.wav
+output/*.mp3
+output/transcripts/*.txt
+output/transcripts/*.json
+
+# Config with secrets
+config/config.local.json
+
+# Logs
+*.log
+logs/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
