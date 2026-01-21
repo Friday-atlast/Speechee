@@ -20,7 +20,7 @@ class EngineConfig:
     WHISPER_CPP_DIR = ENGINE_DIR / "whisper.cpp"
     
     # Whisper.cpp binary (Windows - Visual Studio build)
-    WHISPER_BINARY = WHISPER_CPP_DIR / "build" / "bin" / "Release" / "main.exe"
+    WHISPER_BINARY = WHISPER_CPP_DIR / "build" / "bin" / "Release" / "whisper-cli.exe"
     
     # ================================================================
     # MODEL CONFIGURATIONS

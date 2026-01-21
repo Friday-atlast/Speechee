@@ -9,7 +9,10 @@ import requests
 from pathlib import Path
 
 # Import config from same package
-from config import EngineConfig
+try:
+    from .config import EngineConfig  # When imported as module
+except ImportError:
+    from config import EngineConfig   # When run directly
 
 
 class ModelManager:
@@ -327,6 +330,63 @@ class ModelManager:
 # CLI INTERFACE
 # ================================================================
 
+def print_help():
+    """Print detailed help message."""
+    help_text = """
+================================================================================
+SPEECHEE MODEL MANAGER - HELP
+================================================================================
+
+USAGE:
+  python model_manager.py <command> [options]
+
+COMMANDS:
+  list                    List all models with status
+  download --model NAME   Download specific model
+  verify --model NAME     Verify model integrity
+  essential               Download tiny.en + tiny (low-end devices)
+  recommended             Download tiny.en + tiny + base
+  all                     Download all 4 models
+  help                    Show this help message
+
+OPTIONS:
+  --model, -m NAME        Model name (tiny.en, tiny, base, small)
+  --force, -f             Force re-download even if exists
+  --verbose, -v           Show detailed output
+
+EXAMPLES:
+  # List all models
+  python model_manager.py list
+  
+  # Download specific model
+  python model_manager.py download --model tiny
+  
+  # Download essential models (tiny.en + tiny)
+  python model_manager.py essential
+  
+  # Download recommended models (tiny.en + tiny + base)
+  python model_manager.py recommended
+  
+  # Download all models
+  python model_manager.py all
+  
+  # Verify specific model
+  python model_manager.py verify --model base
+  
+  # Force re-download
+  python model_manager.py download --model tiny --force
+
+MODELS:
+  tiny.en     75 MB    English only, fastest
+  tiny        75 MB    Multilingual, fastest (Hindi/Hinglish)
+  base       142 MB    Multilingual, balanced
+  small      466 MB    Multilingual, better accuracy
+
+================================================================================
+"""
+    print(help_text)
+
+
 def main():
     """Command line interface."""
     import argparse
@@ -334,19 +394,13 @@ def main():
     parser = argparse.ArgumentParser(
         description="Speechee Model Manager",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python model_manager.py list
-  python model_manager.py download --model tiny.en
-  python model_manager.py download --all
-  python model_manager.py verify --model base
-  python model_manager.py recommended
-        """
+        add_help=False  # Custom help handling
     )
     
     parser.add_argument(
         "command",
-        choices=["list", "download", "verify", "essential", "recommended", "all"],
+        nargs="?",
+        choices=["list", "download", "verify", "essential", "recommended", "all", "help"],
         help="Command to execute"
     )
     parser.add_argument(
@@ -363,8 +417,19 @@ Examples:
         action="store_true",
         help="Verbose output"
     )
+    parser.add_argument(
+        "--help", "-h",
+        action="store_true",
+        help="Show help message"
+    )
     
     args = parser.parse_args()
+    
+    # Handle help
+    if args.help or args.command == "help":
+        print_help()
+        return
+    
     manager = ModelManager()
     
     # Execute command
@@ -383,11 +448,13 @@ Examples:
         if args.model:
             result = manager.verify_model(args.model)
             print(f"\n[VERIFY] {args.model}")
+            print("-" * 40)
             for key, value in result.items():
                 print(f"  {key}: {value}")
         else:
             results = manager.verify_all()
-            print("\n[VERIFY ALL]")
+            print("\n[VERIFY ALL MODELS]")
+            print("-" * 40)
             for model, result in results.items():
                 status = "✓ Valid" if result.get("valid") else "✗ Invalid"
                 print(f"  {model}: {status}")
@@ -410,11 +477,9 @@ Examples:
         # Show total size
         size_info = manager.get_total_size()
         print(f"\nTotal disk usage: {size_info['total_mb']:.0f} MB ({size_info['total_gb']:.2f} GB)")
-
-
-if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        # No arguments - show interactive menu
+    
+    elif args.command is None:
+        # No command - show interactive menu
         print("\n" + "=" * 65)
         print("SPEECHEE MODEL MANAGER")
         print("=" * 65)
@@ -424,11 +489,16 @@ if __name__ == "__main__":
         print("  3. python model_manager.py recommended   - Download tiny.en + tiny + base")
         print("  4. python model_manager.py all           - Download all 4 models")
         print("  5. python model_manager.py download -m <name>  - Download specific model")
+        print("  6. python model_manager.py help          - Show detailed help")
         print("\nRunning 'recommended' download...\n")
         
-        manager = ModelManager()
         manager.download_recommended()
         print("\n")
         manager.list_models()
+    
     else:
-        main()
+        print_help()
+
+
+if __name__ == "__main__":
+    main()
