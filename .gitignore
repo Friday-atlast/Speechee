@@ -46,3 +46,14 @@ logs/
 .pytest_cache/
 .coverage
 htmlcov/
+
+
+# ================================
+# Day 1 Additions
+# ================================
+
+# Whisper.cpp cloned repo (don't track - user will clone)
+engine/whisper.cpp/
+
+# Large model files (user will download)
+!engine/models/.gitkeep
