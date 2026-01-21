@@ -13,15 +13,15 @@
 - [x] Scope lock
 
 ### Day 1: Whisper.cpp Build
-- [ ] Clone whisper.cpp
-- [ ] CMake build
-- [ ] Download tiny.en model
-- [ ] Test CLI transcription
+- [x] Clone whisper.cpp
+- [x] CMake build
+- [x] Download tiny.en model
+- [x] Test CLI transcription
 
 ### Day 2: Model Management
-- [ ] models/ folder setup
-- [ ] Multiple model support
-- [ ] Model path configuration
+- [x] models/ folder setup
+- [x] Multiple model support
+- [x] Model path configuration
 
 ### Day 3: Python Wrapper
 - [ ] subprocess integration

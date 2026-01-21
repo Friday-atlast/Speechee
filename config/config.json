@@ -1,20 +1,42 @@
 {
-  "mode": "offline",
-  "model": "tiny",
-  "language": "auto",
-  "output_format": "json",
+  "app": {
+    "name": "Speechee",
+    "version": "1.0.0-dev",
+    "mode": "offline"
+  },
+  "model": {
+    "default": "tiny.en",
+    "default_multilingual": "tiny",
+    "auto_download": false,
+    "available": ["tiny.en", "tiny", "base", "small"]
+  },
   "audio": {
     "sample_rate": 16000,
     "channels": 1,
-    "chunk_duration": 5
+    "format": "wav",
+    "chunk_duration_sec": 5,
+    "max_duration_sec": 300
   },
   "paths": {
+    "engine": "engine",
     "models": "engine/models",
     "output": "output/transcripts",
     "temp": "output/temp"
   },
+  "transcription": {
+    "language": "auto",
+    "output_format": "json",
+    "include_timestamps": true,
+    "translate_to_english": false
+  },
   "performance": {
     "threads": 4,
-    "use_gpu": false
+    "use_gpu": false,
+    "low_memory_mode": true
+  },
+  "api": {
+    "host": "127.0.0.1",
+    "port": 8000,
+    "cors_origins": ["*"]
   }
 }
