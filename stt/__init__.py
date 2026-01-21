@@ -4,6 +4,7 @@ Speech-to-Text transcription using whisper.cpp
 """
 
 from .offline import OfflineTranscriber
+from .live_stt import LiveSTT, LiveSTTResult  
 from .exceptions import (
     SpeecheeError,
     ModelNotFoundError,
@@ -14,6 +15,8 @@ from .exceptions import (
 
 __all__ = [
     "OfflineTranscriber",
+    "LiveSTT",              
+    "LiveSTTResult",        
     "SpeecheeError",
     "ModelNotFoundError",
     "AudioFileError",
@@ -21,4 +24,4 @@ __all__ = [
     "BinaryNotFoundError"
 ]
 
-__version__ = "1.0.0-dev" 
+__version__ = "1.0.0-dev"

@@ -4,3 +4,4 @@ soundfile==0.12.1
 numpy==1.24.3
 pyaudio==0.2.13
 pipwin==0.5.1
+colorama==0.4.6

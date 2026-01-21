@@ -24,19 +24,19 @@
 - [x] Model path configuration
 
 ### Day 3: Python Wrapper
-- [ ] subprocess integration
-- [ ] Audio file input
-- [ ] Text output parsing
+- [x] subprocess integration
+- [x] Audio file input
+- [x] Text output parsing
 
 ### Day 4: Microphone Capture
-- [ ] PyAudio setup
-- [ ] WAV recording
-- [ ] 16kHz mono format
+- [x] PyAudio setup
+- [x] WAV recording
+- [x] 16kHz mono format
 
 ### Day 5: Live Integration
-- [ ] Mic → STT pipeline
-- [ ] Temp file handling
-- [ ] Latency testing
+- [x] Mic → STT pipeline
+- [x] Temp file handling
+- [x] Latency testing
 
 ### Day 6: Output Formatting
 - [ ] Plain text output
