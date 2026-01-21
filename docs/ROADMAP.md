@@ -39,9 +39,9 @@
 - [x] Latency testing
 
 ### Day 6: Output Formatting
-- [ ] Plain text output
-- [ ] JSON output
-- [ ] Timestamp support
+- [x] Plain text output
+- [x] JSON output
+- [x] Timestamp support
 
 ### Day 7: CLI Tool
 - [ ] argparse setup
