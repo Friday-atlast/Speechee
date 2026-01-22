@@ -8,6 +8,7 @@ Usage:
     speechee transcribe FILE     # File transcription
     speechee record              # Record audio
     speechee models list         # List models
+    speechee config show         # Show configuration
     speechee --help              # Show help
 """
 
@@ -87,21 +88,29 @@ def cmd_listen(args):
     """Handle 'listen' command — Live mic transcription."""
     try:
         from stt import LiveSTT, OutputManager
+        from config import get_settings
         
-        print_info(f"Initializing Live STT (model: {args.model})...")
+        settings = get_settings()
+        
+        # Get defaults from config
+        model = args.model if args.model else settings.get("stt.model", "tiny.en")
+        language = args.language if args.language else settings.get("stt.language", "auto")
+        duration = args.duration if args.duration is not None else settings.get("audio.default_duration", 5)
+        
+        print_info(f"Initializing Live STT (model: {model})...")
         
         live = LiveSTT(
-            model=args.model,
-            language=args.language,
+            model=model,
+            language=language,
             cleanup=not args.keep_audio,
             verbose=args.verbose
         )
         
-        print_info(f"Recording for {args.duration} seconds...")
+        print_info(f"Recording for {duration} seconds...")
         print(f"{Fore.YELLOW}🎙️  Speak now...{Style.RESET_ALL}\n")
         
         result = live.listen(
-            duration=args.duration,
+            duration=duration,
             keep_audio=args.keep_audio
         )
         
@@ -115,10 +124,11 @@ def cmd_listen(args):
             print(f"  Latency: {result.total_latency_sec:.2f}s")
             print("=" * 60)
             
-            # Save if requested
-            if args.save:
+            # Auto-save if configured or requested
+            if args.save or settings.get("output.auto_save", False):
                 manager = OutputManager()
-                saved = manager.save_from_result(result, format=args.format)
+                output_format = args.format or settings.get("output.format", "txt")
+                saved = manager.save_from_result(result, format=output_format)
                 print_success(f"Saved to: {saved.filepath}")
             
             return 0
@@ -141,6 +151,13 @@ def cmd_transcribe(args):
     """Handle 'transcribe' command — File transcription."""
     try:
         from stt import OfflineTranscriber, OutputManager
+        from config import get_settings
+        
+        settings = get_settings()
+        
+        # Get defaults from config
+        model = args.model or settings.get("stt.model", "tiny.en")
+        language = args.language or settings.get("stt.language", "auto")
         
         # Validate file
         audio_path = Path(args.file)
@@ -149,17 +166,17 @@ def cmd_transcribe(args):
             return 1
         
         print_info(f"Transcribing: {audio_path.name}")
-        print_info(f"Model: {args.model}")
+        print_info(f"Model: {model}")
         
         transcriber = OfflineTranscriber(
-            model=args.model,
-            language=args.language,
+            model=model,
+            language=language,
             verbose=args.verbose
         )
         
         result = transcriber.transcribe(
             str(audio_path),
-            output_format=args.format
+            output_format=args.format or settings.get("output.format", "txt")
         )
         
         if result.success:
@@ -171,9 +188,9 @@ def cmd_transcribe(args):
             print("=" * 60)
             
             # Save if requested
-            if args.save:
+            if args.save or settings.get("output.auto_save", False):
                 manager = OutputManager()
-                saved = manager.save_from_result(result, format=args.format)
+                saved = manager.save_from_result(result, format=args.format or "txt")
                 print_success(f"Saved to: {saved.filepath}")
             
             # Output to file
@@ -199,13 +216,17 @@ def cmd_record(args):
     """Handle 'record' command — Audio recording."""
     try:
         from audio import AudioRecorder
+        from config import get_settings
         
-        print_info(f"Recording for {args.duration} seconds...")
+        settings = get_settings()
+        duration = args.duration if args.duration is not None else settings.get("audio.default_duration", 5)
+        
+        print_info(f"Recording for {duration} seconds...")
         print(f"{Fore.YELLOW}🎙️  Recording...{Style.RESET_ALL}\n")
         
         recorder = AudioRecorder()
         result = recorder.record(
-            duration=args.duration,
+            duration=duration,
             filename=args.output,
             show_progress=True
         )
@@ -306,6 +327,9 @@ def cmd_info(args):
     """Handle 'info' command — System information."""
     try:
         from engine import EngineConfig
+        from config import get_settings
+        
+        settings = get_settings()
         
         print("\n" + "=" * 60)
         print("SPEECHEE SYSTEM INFO")
@@ -314,7 +338,13 @@ def cmd_info(args):
         print(f"\n{Fore.CYAN}Version:{Style.RESET_ALL} {VERSION}")
         print(f"{Fore.CYAN}Project:{Style.RESET_ALL} {PROJECT_ROOT}")
         
-        # Check engine
+        # Config info
+        print(f"\n{Fore.YELLOW}Config:{Style.RESET_ALL}")
+        print(f"  Model: {settings.get('stt.model')}")
+        print(f"  Language: {settings.get('stt.language')}")
+        print(f"  Duration: {settings.get('audio.default_duration')}s")
+        
+        # Engine status
         print(f"\n{Fore.YELLOW}Engine:{Style.RESET_ALL}")
         binary_exists = EngineConfig.WHISPER_BINARY.exists()
         status = f"{Fore.GREEN}✓ Ready{Style.RESET_ALL}" if binary_exists else f"{Fore.RED}✗ Not Built{Style.RESET_ALL}"
@@ -409,6 +439,90 @@ def cmd_outputs(args):
         return 1
 
 
+def cmd_config(args):
+    """Handle 'config' command — Configuration management."""
+    try:
+        from config import Settings
+        from config.settings import CONFIG_DIR, USER_CONFIG_FILE, DEFAULTS_FILE
+        
+        settings = Settings()
+        
+        if args.config_cmd == "show":
+            if args.config_args:
+                settings.print_config(args.config_args[0])
+            else:
+                settings.print_config()
+        
+        elif args.config_cmd == "get":
+            if not args.config_args:
+                print_error("Key required. Example: speechee config get stt.model")
+                return 1
+            key = args.config_args[0]
+            value = settings.get(key)
+            if value is not None:
+                print(f"{Fore.CYAN}{key}{Style.RESET_ALL} = {value}")
+            else:
+                print_warning(f"Key not found: {key}")
+        
+        elif args.config_cmd == "set":
+            if len(args.config_args) < 2:
+                print_error("Key and value required. Example: speechee config set stt.model base")
+                return 1
+            key = args.config_args[0]
+            value = args.config_args[1]
+            
+            # Parse value type
+            if value.lower() == "true":
+                value = True
+            elif value.lower() == "false":
+                value = False
+            elif value.lower() in ("null", "none"):
+                value = None
+            else:
+                try:
+                    value = int(value)
+                except ValueError:
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        pass
+            
+            settings.set(key, value, persist=True)
+            print_success(f"Set {key} = {value}")
+        
+        elif args.config_cmd == "reset":
+            if args.config_args:
+                key = args.config_args[0]
+                settings.reset(key)
+                settings.save()
+                print_success(f"Reset: {key}")
+            else:
+                print_warning("Use 'speechee config reset <key>' to reset specific key")
+        
+        elif args.config_cmd == "validate":
+            result = settings.validate()
+            if result["valid"]:
+                print_success("Configuration is valid")
+            else:
+                print_warning("Configuration issues:")
+                for issue in result["issues"]:
+                    print(f"  - {issue}")
+        
+        elif args.config_cmd == "path":
+            print(f"\n{Fore.CYAN}Config Directory:{Style.RESET_ALL} {CONFIG_DIR}")
+            print(f"{Fore.CYAN}User Config:{Style.RESET_ALL}      {USER_CONFIG_FILE}")
+            print(f"{Fore.CYAN}Defaults:{Style.RESET_ALL}         {DEFAULTS_FILE}")
+        
+        else:
+            settings.print_config()
+        
+        return 0
+        
+    except Exception as e:
+        print_error(f"Error: {e}")
+        return 1
+
+
 # ================================================================
 # MAIN CLI
 # ================================================================
@@ -427,6 +541,7 @@ def create_parser():
   models      Manage whisper models
   devices     List audio input devices
   outputs     Manage saved transcripts
+  config      View and modify configuration
   info        Show system information
 
 {Fore.CYAN}Examples:{Style.RESET_ALL}
@@ -441,6 +556,10 @@ def create_parser():
   
   speechee record -d 5                    # Record 5 seconds
   speechee record -d 10 -o my_audio.wav   # Custom filename
+
+  speechee config show                    # Show all config
+  speechee config get stt.model           # Get specific value
+  speechee config set stt.model base      # Set value
   
   speechee models list                    # List models
   speechee models download base           # Download base model
@@ -472,18 +591,15 @@ def create_parser():
     listen_parser.add_argument(
         "-d", "--duration",
         type=float,
-        default=5.0,
-        help="Recording duration in seconds (default: 5)"
+        help="Recording duration in seconds"
     )
     listen_parser.add_argument(
         "-m", "--model",
-        default="tiny.en",
-        help="Whisper model (default: tiny.en)"
+        help="Whisper model"
     )
     listen_parser.add_argument(
         "-l", "--language",
-        default="auto",
-        help="Language code or 'auto' (default: auto)"
+        help="Language code or 'auto'"
     )
     listen_parser.add_argument(
         "--save",
@@ -493,8 +609,7 @@ def create_parser():
     listen_parser.add_argument(
         "-f", "--format",
         choices=["txt", "json", "srt", "vtt"],
-        default="txt",
-        help="Output format (default: txt)"
+        help="Output format"
     )
     listen_parser.add_argument(
         "--keep-audio",
@@ -519,13 +634,11 @@ def create_parser():
     )
     transcribe_parser.add_argument(
         "-m", "--model",
-        default="tiny.en",
-        help="Whisper model (default: tiny.en)"
+        help="Whisper model"
     )
     transcribe_parser.add_argument(
         "-l", "--language",
-        default="auto",
-        help="Language code or 'auto' (default: auto)"
+        help="Language code or 'auto'"
     )
     transcribe_parser.add_argument(
         "-o", "--output",
@@ -539,8 +652,7 @@ def create_parser():
     transcribe_parser.add_argument(
         "-f", "--format",
         choices=["txt", "json", "srt", "vtt"],
-        default="txt",
-        help="Output format (default: txt)"
+        help="Output format"
     )
     transcribe_parser.add_argument(
         "--verbose",
@@ -557,8 +669,7 @@ def create_parser():
     record_parser.add_argument(
         "-d", "--duration",
         type=float,
-        default=5.0,
-        help="Recording duration in seconds (default: 5)"
+        help="Recording duration in seconds"
     )
     record_parser.add_argument(
         "-o", "--output",
@@ -627,6 +738,25 @@ def create_parser():
         help="Show system information",
         description="Show Speechee system information and status."
     )
+
+    # ---- config command ----
+    config_parser = subparsers.add_parser(
+        "config",
+        help="Manage configuration",
+        description="View and modify Speechee configuration."
+    )
+    config_parser.add_argument(
+        "config_cmd",
+        nargs="?",
+        choices=["show", "get", "set", "reset", "validate", "path"],
+        default="show",
+        help="Config subcommand"
+    )
+    config_parser.add_argument(
+        "config_args",
+        nargs="*",
+        help="Additional arguments (key, value)"
+    )
     
     return parser
 
@@ -650,6 +780,7 @@ def main():
         "models": cmd_models,
         "devices": cmd_devices,
         "outputs": cmd_outputs,
+        "config": cmd_config,
         "info": cmd_info,
     }
     

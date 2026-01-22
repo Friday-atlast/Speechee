@@ -44,18 +44,18 @@
 - [x] Timestamp support
 
 ### Day 7: CLI Tool
-- [ ] argparse setup
-- [ ] --mic command
-- [ ] --file command
+- [x] argparse setup
+- [x] --mic command
+- [x] --file command
 
 ---
 
 ## Week 2: API & Polish
 
 ### Day 8: Config System
-- [ ] config.json structure
-- [ ] Runtime config loading
-- [ ] Default fallbacks
+- [x] config.json structure
+- [x] Runtime config loading
+- [x] Default fallbacks
 
 ### Day 9: Language Support
 - [ ] English testing
