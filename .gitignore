@@ -34,6 +34,8 @@ output/*.wav
 output/*.mp3
 output/transcripts/*.txt
 output/transcripts/*.json
+output/temp/
+output/transcripts
 
 # Config with secrets
 config/config.local.json
