@@ -7,6 +7,7 @@ from .offline import OfflineTranscriber
 from .live_stt import LiveSTT, LiveSTTResult
 from .formatter import OutputFormatter, TranscriptSegment
 from .output_manager import OutputManager, SavedTranscript
+from .language import LanguageManager, LanguageResult  
 from .exceptions import (
     SpeecheeError,
     ModelNotFoundError,
@@ -26,6 +27,10 @@ __all__ = [
     "TranscriptSegment",
     "OutputManager",
     "SavedTranscript",
+    
+    # Language
+    "LanguageManager", 
+    "LanguageResult",   
     
     # Exceptions
     "SpeecheeError",

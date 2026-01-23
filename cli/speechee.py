@@ -522,6 +522,63 @@ def cmd_config(args):
         print_error(f"Error: {e}")
         return 1
 
+def cmd_language(args):
+    """Handle 'language' command — Language detection and info."""
+    try:
+        from stt import LanguageManager
+        
+        lm = LanguageManager()
+        
+        if args.lang_cmd == "detect":
+            if not args.text:
+                print_error("Text required. Example: speechee language detect 'Hello world'")
+                return 1
+            
+            text = " ".join(args.text)
+            result = lm.detect(text)
+            is_hinglish, mix_ratio = lm.detect_hinglish(text)
+            
+            print("\n" + "=" * 50)
+            print("LANGUAGE DETECTION")
+            print("=" * 50)
+            print(f"\n  Text: \"{text[:50]}{'...' if len(text) > 50 else ''}\"")
+            print(f"\n  {Fore.CYAN}Detected:{Style.RESET_ALL} {result.name} ({result.code})")
+            print(f"  {Fore.CYAN}Confidence:{Style.RESET_ALL} {result.confidence:.1%}")
+            print(f"  {Fore.CYAN}Method:{Style.RESET_ALL} {result.method}")
+            
+            if is_hinglish:
+                print(f"\n  {Fore.YELLOW}⚠ Hinglish detected (mix: {mix_ratio:.1%}){Style.RESET_ALL}")
+                print(f"  {Fore.CYAN}Tip:{Style.RESET_ALL} Use multilingual model (tiny, base)")
+            
+            print("=" * 50)
+        
+        elif args.lang_cmd == "list":
+            lm.print_languages()
+        
+        elif args.lang_cmd == "model":
+            if not args.text:
+                print_error("Language code required. Example: speechee language model hi")
+                return 1
+            
+            lang_code = args.text[0]
+            quality = args.quality or "balanced"
+            
+            model = lm.get_recommended_model(lang_code, quality)
+            requires_multi = lm.requires_multilingual_model(lang_code)
+            
+            print(f"\n  Language: {lm.get_language_name(lang_code)} ({lang_code})")
+            print(f"  Quality: {quality}")
+            print(f"  Recommended Model: {Fore.GREEN}{model}{Style.RESET_ALL}")
+            print(f"  Requires Multilingual: {requires_multi}")
+        
+        else:
+            lm.print_languages()
+        
+        return 0
+        
+    except Exception as e:
+        print_error(f"Error: {e}")
+        return 1
 
 # ================================================================
 # MAIN CLI
@@ -758,6 +815,30 @@ def create_parser():
         help="Additional arguments (key, value)"
     )
     
+    # ---- language command ----
+    lang_parser = subparsers.add_parser(
+        "language",
+        help="Language detection and info",
+        description="Detect language and get model recommendations."
+    )
+    lang_parser.add_argument(
+        "lang_cmd",
+        nargs="?",
+        choices=["detect", "list", "model"],
+        default="list",
+        help="Language subcommand"
+    )
+    lang_parser.add_argument(
+        "text",
+        nargs="*",
+        help="Text to analyze or language code"
+    )
+    lang_parser.add_argument(
+        "--quality", "-q",
+        choices=["fast", "balanced", "accurate"],
+        help="Model quality preference"
+    )
+
     return parser
 
 
@@ -782,6 +863,7 @@ def main():
         "outputs": cmd_outputs,
         "config": cmd_config,
         "info": cmd_info,
+        "language": cmd_language,
     }
     
     handler = commands.get(args.command)

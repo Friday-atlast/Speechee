@@ -58,9 +58,9 @@
 - [x] Default fallbacks
 
 ### Day 9: Language Support
-- [ ] English testing
-- [ ] Hindi testing
-- [ ] Auto-detection
+- [x] English testing
+- [x] Hindi testing
+- [x] Auto-detection
 
 ### Day 10: FastAPI Server
 - [ ] API endpoints
