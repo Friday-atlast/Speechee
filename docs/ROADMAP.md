@@ -78,9 +78,9 @@
 - [x] Thread limiting
 
 ### Day 13: Documentation
-- [ ] Installation guide
-- [ ] API documentation
-- [ ] Usage examples
+- [x] Installation guide
+- [x] API documentation
+- [x] Usage examples
 
 ### Day 14: Release
 - [ ] Final testing

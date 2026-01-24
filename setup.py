@@ -19,7 +19,13 @@ setup(
         "numpy==1.24.3",
         "pyaudio==0.2.13",
         "pipwin==0.5.1",
-        "colorama==0.4.6"
+        "colorama==0.4.6",
+        "langdetect==1.0.9",
+        "fastapi==0.95.1",
+        "uvicorn==0.22.0",
+        "python-multipart==0.0.6",
+        "psutil==5.9.4",
+        "memory-profiler==0.60.0"
     ],
     entry_points={
         "console_scripts": [

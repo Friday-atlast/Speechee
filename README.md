@@ -53,12 +53,45 @@ stt-system/
 └─ tests/ # Test files
 
 ## Quick Start
-```bash
-# Coming soon after Day 1
+
+Documentation entry point:
+
+- `docs/README.md`
+
+### 1) Install
+
+Follow:
+
+- `docs/INSTALLATION.md`
+
+### 2) Run the CLI
+
+If installed (recommended):
+
+```powershell
+pip install -e .
+speechee --help
 ```
 
+If not installed:
+
+```powershell
+python cli\speechee.py --help
+```
+
+### 3) Run the API + Web UI
+
+```powershell
+python api\server.py --host 127.0.0.1 --port 8000
+```
+
+Open:
+
+- `http://127.0.0.1:8000/docs`
+- `http://127.0.0.1:8000/ui`
+
 ## Development Timeline
-- Day 0: Foundation ✅
+- Day 0: Foundation 
 - Day 1-3: Whisper.cpp Integration
 - Day 4-7: Audio + CLI
 - Day 8-11: API + Web UI

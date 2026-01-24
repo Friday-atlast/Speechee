@@ -3,18 +3,27 @@
 ## Overview
 This document explains how to build the whisper.cpp STT engine for Speechee.
 
+Speechee expects the built binary at:
+
+- `engine/whisper.cpp/build/bin/Release/whisper-cli.exe`
+
+Speechee expects Whisper model files under:
+
+- `engine/models/`
+
 ## Prerequisites
 
 ### Windows 10/11
 - **Git** — [Download](https://git-scm.com/downloads)
-- **Visual Studio 2026 Community** — [Download](https://visualstudio.microsoft.com/)
+- **Visual Studio Community** — [Download](https://visualstudio.microsoft.com/)
   - Workload: "Desktop development with C++"
+- **CMake** (if not already included with your Visual Studio install)
 
 ## Build Steps
 
 ### 1. Open Developer Command Prompt
 ```
-Windows Search → "Developer Command Prompt for VS 2022"
+Windows Search → "Developer Command Prompt for VS" (or "Developer PowerShell for VS")
 ```
 
 ### 2. Navigate to Engine Folder
@@ -23,8 +32,11 @@ cd path\to\speechee\engine
 ```
 
 ### 3. Clone whisper.cpp
+
+If `engine/whisper.cpp/` already exists (vendored with this repo), skip this step.
+
 ```cmd
-git clone https://github.com/ggerganov/whisper.cpp.git
+git clone https://github.com/ggerganov/whisper.cpp.git whisper.cpp
 cd whisper.cpp
 ```
 
@@ -46,27 +58,36 @@ cmake --build . --config Release
 
 ### 7. Verify Build
 ```cmd
-dir bin\Release\main.exe
+dir bin\Release\whisper-cli.exe
 ```
 
 ## Download Model
 
 ### Tiny Model (Recommended for low-end devices)
+
+Recommended (via Speechee model manager):
+
 ```cmd
-cd ..\models
+python model_manager.py download --model tiny.en
+```
+
+Manual download (direct URL):
+
+```cmd
+cd models
 powershell -Command "Invoke-WebRequest -Uri 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin' -OutFile 'ggml-tiny.en.bin'"
 ```
 
 ### Manual Download
 - URL: https://huggingface.co/ggerganov/whisper.cpp/tree/main
 - File: ggml-tiny.en.bin
-- Save to: `engine/whisper.cpp/models/`
+- Save to: `engine/models/`
 
 ## Test Installation
 
 ```cmd
 cd build
-bin\Release\main.exe -m ..\models\ggml-tiny.en.bin -f ..\samples\jfk.wav
+bin\Release\whisper-cli.exe -m ..\..\models\ggml-tiny.en.bin -f ..\samples\jfk.wav
 ```
 
 ### Expected Output
@@ -78,26 +99,27 @@ bin\Release\main.exe -m ..\models\ggml-tiny.en.bin -f ..\samples\jfk.wav
 
 | Model | Size | RAM Usage | Speed | Accuracy |
 |-------|------|-----------|-------|----------|
-| tiny.en | 75 MB | ~400 MB | Fastest | Basic |
-| base.en | 142 MB | ~800 MB | Fast | Good |
-| small.en | 466 MB | ~1.5 GB | Medium | Better |
-| medium.en | 1.5 GB | ~3 GB | Slow | Best |
+| tiny.en | ~75 MB | ~400 MB | Fastest | Basic |
+| tiny | ~75 MB | ~500 MB | Fast | Better multilingual |
+| base | ~142 MB | ~800 MB | Medium | Good |
+| small | ~466 MB | ~1.5 GB | Slow | Better |
 
-**Recommendation:** Use `tiny.en` for development, `base.en` for production on low-end devices.
+**Recommendation:** Use `tiny.en` for English-only development on low-end devices; use `base` when you need better quality (and can afford the extra CPU/RAM).
 
 ## Troubleshooting
 
 ### Error: "cmake is not recognized"
-- Use Developer Command Prompt, not regular CMD
+- Install CMake or enable it in your Visual Studio installer
+- Use Developer Command Prompt/PowerShell, not a regular shell
 
 ### Error: "cl is not recognized"
-- Visual Studio C++ workload not installed
-- Reinstall VS with "Desktop development with C++"
+- Visual Studio C++ workload is not installed ("Desktop development with C++")
+- Make sure you are using a Developer Command Prompt/PowerShell
 
 ### Error: Build fails with missing header
 - Delete build folder
 - Re-run cmake and build commands
 
 ### Error: Model file corrupted
-- Verify file size (tiny.en = 77,691,713 bytes)
-- Re-download if size is different
+- Verify file size (example: tiny.en is commonly `77,691,713` bytes)
+- Re-download if the size is different or the download was interrupted
