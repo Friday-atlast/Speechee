@@ -1,8 +1,10 @@
 {
   "_comment": "Speechee User Configuration - Edit as needed",
   "stt": {
-    "model": "tiny.en",
-    "language": "auto"
+    "model": "tiny",
+    "language": "auto",
+    "threads": 2,
+    "translate": false
   },
   "audio": {
     "default_duration": 5
@@ -14,5 +16,9 @@
   "cli": {
     "show_banner": true,
     "colored_output": true
+  },
+  "performance": {
+    "max_threads": 2,
+    "low_memory_mode": true
   }
 }

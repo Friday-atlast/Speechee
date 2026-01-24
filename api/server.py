@@ -125,8 +125,9 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         duration = time.time() - start
         
-        # Skip logging for static files and docs
-        if not request.url.path.startswith(("/static", "/docs", "/redoc", "/openapi")):
+        # Skip logging for health checks and static files
+        skip_paths = ["/health", "/static", "/docs", "/redoc", "/openapi", "/css", "/js"]
+        if not any(request.url.path.startswith(p) for p in skip_paths):
             logger.info(f"{request.method} {request.url.path} → {response.status_code} ({duration:.3f}s)")
         
         response.headers["X-Process-Time"] = f"{duration:.3f}"

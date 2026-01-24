@@ -73,9 +73,9 @@
 - [x] JavaScript logic
 
 ### Day 12: Optimization
-- [ ] Memory profiling
-- [ ] Low-end testing
-- [ ] Thread limiting
+- [x] Memory profiling
+- [x] Low-end testing
+- [x] Thread limiting
 
 ### Day 13: Documentation
 - [ ] Installation guide

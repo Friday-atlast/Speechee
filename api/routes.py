@@ -141,20 +141,23 @@ async def health_check():
         )
 
 
-@router.post("/stt", response_model=STTResponse, tags=["Transcription"])
+# In the transcribe_audio function, update to explicitly handle language:
+
+@router.post("/stt", tags=["Transcription"])
 async def transcribe_audio(
     file: UploadFile = File(..., description="Audio file to transcribe"),
-    model: str = Form(default="tiny.en", description="Whisper model name"),
-    language: str = Form(default="auto", description="Language code or 'auto'")
+    model: str = Form(default="tiny", description="Whisper model name"),
+    language: str = Form(default="auto", description="Language code (hi, en, auto)"),
+    translate: bool = Form(default=False, description="Translate to English (default: false = transcribe)")
 ):
     """
-    Transcribe uploaded audio file to text.
+    Transcribe uploaded audio file.
     
-    - **file**: Audio file (WAV, MP3, M4A, FLAC, OGG, WEBM)
-    - **model**: Whisper model (tiny.en, tiny, base, small)
-    - **language**: Language code (en, hi, auto)
+    IMPORTANT:
+    - translate=false (default): Keeps original language (Hindi → Hindi text)
+    - translate=true: Converts to English (Hindi → English text)
     
-    Returns JSON with transcribed text.
+    For Hindi audio, use language="hi" and translate=false.
     """
     start_time = time.time()
     
@@ -182,15 +185,13 @@ async def transcribe_audio(
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        # Get file size for duration estimate
-        file_size = temp_path.stat().st_size
-        
         # Transcribe using existing module
         from stt import OfflineTranscriber
         
         transcriber = OfflineTranscriber(
             model=model,
             language=language,
+            translate=translate,  # IMPORTANT: Pass translate flag
             verbose=False
         )
         
@@ -199,22 +200,23 @@ async def transcribe_audio(
         processing_time = time.time() - start_time
         
         if result.success:
-            return STTResponse(
-                success=True,
-                text=result.text,
-                language=result.language,
-                model=model,
-                processing_time_sec=round(processing_time, 2),
-                error=None
-            )
+            return {
+                "success": True,
+                "text": result.text,
+                "language": result.language,
+                "model": model,
+                "translate": translate,
+                "processing_time_sec": round(processing_time, 2),
+                "error": None
+            }
         else:
-            return STTResponse(
-                success=False,
-                text="",
-                model=model,
-                processing_time_sec=round(processing_time, 2),
-                error=result.error
-            )
+            return {
+                "success": False,
+                "text": "",
+                "model": model,
+                "processing_time_sec": round(processing_time, 2),
+                "error": result.error
+            }
             
     except ImportError as e:
         raise HTTPException(status_code=500, detail=f"STT module not available: {e}")
@@ -227,7 +229,6 @@ async def transcribe_audio(
                 os.remove(temp_path)
             except:
                 pass
-
 
 @router.post("/listen", response_model=ListenResponse, tags=["Transcription"])
 async def listen_and_transcribe(request: ListenRequest):

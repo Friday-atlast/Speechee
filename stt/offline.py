@@ -1,19 +1,18 @@
 """
 Speechee - Offline Transcriber
 Python wrapper for whisper.cpp using subprocess.
+FIXED: Language parameter properly passed to whisper-cli
 """
 
 import subprocess
 import sys
 import os
 import json
-import tempfile
-import shutil
+import time
 from pathlib import Path
 from typing import Optional, Dict, Any, Union
 from dataclasses import dataclass
 
-# Add parent directory to path for imports
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -49,6 +48,7 @@ class TranscriptionResult:
     segments: Optional[list] = None
     success: bool = True
     error: Optional[str] = None
+    processing_time_sec: Optional[float] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary."""
@@ -60,7 +60,8 @@ class TranscriptionResult:
             "duration_ms": self.duration_ms,
             "segments": self.segments,
             "success": self.success,
-            "error": self.error
+            "error": self.error,
+            "processing_time_sec": self.processing_time_sec
         }
     
     def to_json(self, indent: int = 2) -> str:
@@ -72,6 +73,10 @@ class OfflineTranscriber:
     """
     Offline Speech-to-Text transcriber using whisper.cpp.
     
+    IMPORTANT: This class TRANSCRIBES audio, it does NOT translate.
+    Hindi audio will output Hindi text (Devanagari).
+    English audio will output English text.
+    
     Usage:
         transcriber = OfflineTranscriber(model="tiny.en")
         result = transcriber.transcribe("audio.wav")
@@ -80,11 +85,41 @@ class OfflineTranscriber:
     
     SUPPORTED_FORMATS = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".webm"}
     
+    # Language code mapping for whisper
+    LANGUAGE_CODES = {
+        "auto": "auto",
+        "en": "en", "english": "en",
+        "hi": "hi", "hindi": "hi",
+        "es": "es", "spanish": "es",
+        "fr": "fr", "french": "fr",
+        "de": "de", "german": "de",
+        "ja": "ja", "japanese": "ja",
+        "ko": "ko", "korean": "ko",
+        "zh": "zh", "chinese": "zh",
+        "ar": "ar", "arabic": "ar",
+        "ru": "ru", "russian": "ru",
+        "pt": "pt", "portuguese": "pt",
+        "it": "it", "italian": "it",
+        "nl": "nl", "dutch": "nl",
+        "pl": "pl", "polish": "pl",
+        "tr": "tr", "turkish": "tr",
+        "ta": "ta", "tamil": "ta",
+        "te": "te", "telugu": "te",
+        "mr": "mr", "marathi": "mr",
+        "bn": "bn", "bengali": "bn",
+        "gu": "gu", "gujarati": "gu",
+        "kn": "kn", "kannada": "kn",
+        "ml": "ml", "malayalam": "ml",
+        "pa": "pa", "punjabi": "pa",
+        "ur": "ur", "urdu": "ur",
+    }
+    
     def __init__(
         self,
         model: str = None,
         language: str = "auto",
-        threads: int = 4,
+        threads: int = None,
+        translate: bool = False,
         verbose: bool = False
     ):
         """
@@ -92,19 +127,46 @@ class OfflineTranscriber:
         
         Args:
             model: Model name (tiny.en, tiny, base, small). Default from config.
-            language: Language code or "auto". Default "auto".
-            threads: Number of CPU threads. Default 4.
+            language: Language code ("hi" for Hindi, "en" for English, "auto" for auto-detect)
+            threads: CPU threads. None = auto (uses config value)
+            translate: If True, translates to English. Default FALSE = transcribe in original language
             verbose: Print debug info. Default False.
         """
         self.config = EngineConfig
-        self.model = model or self.config.DEFAULT_MODEL
-        self.language = language
-        self.threads = threads
+        
+        # Get defaults from config
+        try:
+            from config import get_settings
+            settings = get_settings()
+            default_model = settings.get("stt.model", "tiny.en")
+            default_threads = settings.get("stt.threads", 4)
+        except:
+            default_model = self.config.DEFAULT_MODEL
+            default_threads = 4
+        
+        self.model = model or default_model
+        self.language = self._normalize_language(language)
+        self.threads = threads or default_threads
+        self.translate = translate
         self.verbose = verbose
         
         # Validate setup
         self._validate_binary()
         self._validate_model()
+        
+        if self.verbose:
+            print(f"[TRANSCRIBER] Initialized:")
+            print(f"  Model: {self.model}")
+            print(f"  Language: {self.language}")
+            print(f"  Threads: {self.threads}")
+            print(f"  Translate: {self.translate}")
+    
+    def _normalize_language(self, lang: str) -> str:
+        """Normalize language code."""
+        if not lang:
+            return "auto"
+        lang = lang.lower().strip()
+        return self.LANGUAGE_CODES.get(lang, lang)
     
     def _validate_binary(self) -> None:
         """Check if whisper.cpp binary exists."""
@@ -155,7 +217,10 @@ class OfflineTranscriber:
     
     def _build_command(self, audio_path: Path, output_format: str = "txt") -> list:
         """
-        Build whisper.cpp command.
+        Build whisper.cpp command with correct parameters.
+        
+        CRITICAL: We use transcribe mode, NOT translate mode by default.
+        This ensures Hindi audio outputs Hindi text, not English translation.
         
         Args:
             audio_path: Path to audio file
@@ -172,11 +237,26 @@ class OfflineTranscriber:
             "-m", model_path,
             "-f", str(audio_path),
             "-t", str(self.threads),
+            "--no-timestamps",  # Cleaner output
         ]
         
-        # Language setting
-        if self.language != "auto":
+        # Language parameter
+        # If language is specified (not auto), explicitly set it
+        if self.language and self.language != "auto":
             cmd.extend(["-l", self.language])
+            if self.verbose:
+                print(f"[CMD] Setting language: {self.language}")
+        
+        # Translate flag
+        # Only add if user explicitly wants translation to English
+        # By default, we TRANSCRIBE (keep original language)
+        if self.translate:
+            cmd.append("--translate")
+            if self.verbose:
+                print(f"[CMD] Translation mode enabled (output will be English)")
+        else:
+            if self.verbose:
+                print(f"[CMD] Transcription mode (output in original language)")
         
         # Output format
         if output_format == "json":
@@ -198,6 +278,11 @@ class OfflineTranscriber:
         """
         Transcribe an audio file.
         
+        IMPORTANT: This TRANSCRIBES audio in its original language.
+        - Hindi audio → Hindi text (Devanagari)
+        - English audio → English text
+        - Hinglish audio → Mixed text
+        
         Args:
             audio_path: Path to audio file
             output_format: Output format (txt, json, srt)
@@ -207,13 +292,16 @@ class OfflineTranscriber:
         Returns:
             TranscriptionResult object
         """
+        start_time = time.time()
+        
         # Validate audio file
         audio_path = self._validate_audio(audio_path)
         
         if self.verbose:
-            print(f"[TRANSCRIBE] {audio_path.name}")
+            print(f"\n[TRANSCRIBE] {audio_path.name}")
             print(f"  Model: {self.model}")
             print(f"  Language: {self.language}")
+            print(f"  Translate: {self.translate}")
             print(f"  Threads: {self.threads}")
         
         # Build command
@@ -228,15 +316,20 @@ class OfflineTranscriber:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=300,  # 5 minute timeout
-                cwd=str(audio_path.parent)  # Run in audio file's directory
+                timeout=600,  # 10 minute timeout
+                cwd=str(audio_path.parent),
+                encoding='utf-8',
+                errors='replace'
             )
+            
+            processing_time = time.time() - start_time
             
             # Check for errors
             if process.returncode != 0:
+                error_msg = process.stderr or process.stdout or "Unknown error"
                 raise TranscriptionError(
                     f"Process exited with code {process.returncode}",
-                    process.stderr or process.stdout  # Capture any output
+                    error_msg
                 )
             
             # Read output file
@@ -288,22 +381,40 @@ class OfflineTranscriber:
                 model=self.model,
                 audio_path=str(audio_path),
                 segments=segments,
-                success=True
+                success=True,
+                processing_time_sec=round(processing_time, 2)
             )
             
             if self.verbose:
-                print(f"  Result: {text[:100]}..." if len(text) > 100 else f"  Result: {text}")
+                preview = text[:100] + "..." if len(text) > 100 else text
+                print(f"  Result: {preview}")
+                print(f"  Time: {processing_time:.2f}s")
             
             return result
             
         except subprocess.TimeoutExpired:
-            raise TranscriptionError("Process timed out (>5 minutes)")
+            raise TranscriptionError("Process timed out (>10 minutes)")
         except FileNotFoundError:
             raise BinaryNotFoundError(str(self.config.WHISPER_BINARY))
         except Exception as e:
             if isinstance(e, TranscriptionError):
                 raise
             raise TranscriptionError(str(e))
+    
+    def transcribe_hindi(self, audio_path: Union[str, Path]) -> TranscriptionResult:
+        """
+        Convenience method for Hindi transcription.
+        Ensures output is in Hindi (Devanagari), not translated to English.
+        
+        Args:
+            audio_path: Path to audio file
+            
+        Returns:
+            TranscriptionResult with Hindi text
+        """
+        self.language = "hi"
+        self.translate = False
+        return self.transcribe(audio_path)
     
     def transcribe_multiple(
         self,
@@ -349,11 +460,13 @@ class OfflineTranscriber:
             "model": self.model,
             "language": self.language,
             "threads": self.threads,
+            "translate": self.translate,
             "binary": str(self.config.WHISPER_BINARY),
             "binary_exists": self.config.WHISPER_BINARY.exists(),
             "model_path": str(self.config.get_model_path(self.model)),
             "model_exists": self.config.is_model_downloaded(self.model),
-            "supported_formats": list(self.SUPPORTED_FORMATS)
+            "supported_formats": list(self.SUPPORTED_FORMATS),
+            "supported_languages": list(self.LANGUAGE_CODES.keys())
         }
 
 
@@ -370,11 +483,26 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Transcribe English audio
   python offline.py transcribe audio.wav
+  
+  # Transcribe Hindi audio (output in Devanagari)
+  python offline.py transcribe hindi.wav --language hi
+  
+  # Auto-detect language
+  python offline.py transcribe audio.wav --language auto
+  
+  # Translate to English (converts any language to English)
+  python offline.py transcribe hindi.wav --translate
+  
+  # Use specific model
   python offline.py transcribe audio.wav --model base
-  python offline.py transcribe audio.wav --language hi
+  
+  # Save output to file
+  python offline.py transcribe audio.wav --save
+  
+  # JSON output format
   python offline.py transcribe audio.wav --output json
-  python offline.py info
         """
     )
     
@@ -384,7 +512,8 @@ Examples:
     trans_parser = subparsers.add_parser("transcribe", help="Transcribe audio file")
     trans_parser.add_argument("audio", help="Path to audio file")
     trans_parser.add_argument("--model", "-m", default="tiny.en", help="Model name (default: tiny.en)")
-    trans_parser.add_argument("--language", "-l", default="auto", help="Language code (default: auto)")
+    trans_parser.add_argument("--language", "-l", default="auto", help="Language code: hi, en, auto (default: auto)")
+    trans_parser.add_argument("--translate", action="store_true", help="Translate to English (default: transcribe in original language)")
     trans_parser.add_argument("--output", "-o", choices=["txt", "json", "srt"], default="txt", help="Output format")
     trans_parser.add_argument("--threads", "-t", type=int, default=4, help="CPU threads (default: 4)")
     trans_parser.add_argument("--save", "-s", action="store_true", help="Save output to file")
@@ -402,6 +531,7 @@ Examples:
                 model=args.model,
                 language=args.language,
                 threads=args.threads,
+                translate=args.translate,
                 verbose=args.verbose
             )
             
@@ -419,6 +549,11 @@ Examples:
                 print("TRANSCRIPTION RESULT")
                 print('='*60)
                 print(f"\n{result.text}\n")
+                print('='*60)
+                print(f"Language: {result.language}")
+                print(f"Model: {result.model}")
+                if result.processing_time_sec:
+                    print(f"Time: {result.processing_time_sec}s")
                 print('='*60)
                 
         except Exception as e:
