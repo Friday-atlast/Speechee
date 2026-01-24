@@ -144,12 +144,22 @@ def create_app() -> FastAPI:
     # Include routes
     app.include_router(router)
     
-    # Static files
+   # Static files - serve from /static AND root for assets
     static_dir = Path(__file__).parent / "static"
     if static_dir.exists():
+        # Mount css and js directories
+        css_dir = static_dir / "css"
+        js_dir = static_dir / "js"
+        
+        if css_dir.exists():
+            app.mount("/css", StaticFiles(directory=str(css_dir)), name="css")
+        if js_dir.exists():
+            app.mount("/js", StaticFiles(directory=str(js_dir)), name="js")
+        
+        # Also mount full static directory
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
     
-    # UI endpoint
+    # UI endpoint - serve index.html
     @app.get("/ui", include_in_schema=False)
     async def serve_ui():
         html_path = static_dir / "index.html"

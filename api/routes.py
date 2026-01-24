@@ -361,3 +361,76 @@ async def detect_language(text: str = Query(..., min_length=1, description="Text
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ========================================
+# TRANSCRIPT ENDPOINTS
+# ========================================
+
+@router.get("/transcripts", tags=["Transcripts"])
+async def list_transcripts(limit: int = Query(default=20, ge=1, le=100)):
+    """Get list of saved transcripts."""
+    try:
+        from stt import OutputManager
+        
+        manager = OutputManager()
+        transcripts = manager.list_transcripts(limit=limit)
+        stats = manager.get_stats()
+        
+        items = []
+        for t in transcripts:
+            items.append({
+                "filename": t.filename,
+                "filepath": t.filepath,
+                "format": t.format,
+                "size_bytes": t.size_bytes,
+                "created_at": t.created_at
+            })
+        
+        return {
+            "transcripts": items,
+            "total": stats["total_files"],
+            "total_size_kb": stats["total_size_kb"],
+            "directory": stats["output_dir"]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/transcripts/{filename}", tags=["Transcripts"])
+async def get_transcript_content(filename: str):
+    """Get content of a specific transcript."""
+    try:
+        from stt import OutputManager
+        
+        manager = OutputManager()
+        content = manager.load(filename)
+        
+        return {
+            "filename": filename,
+            "content": content
+        }
+        
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Transcript not found: {filename}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/transcripts/{filename}", tags=["Transcripts"])
+async def delete_transcript(filename: str):
+    """Delete a transcript file."""
+    try:
+        from stt import OutputManager
+        
+        manager = OutputManager()
+        
+        if manager.delete(filename):
+            return {"success": True, "message": f"Deleted: {filename}"}
+        else:
+            raise HTTPException(status_code=404, detail=f"Not found: {filename}")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

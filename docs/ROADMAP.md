@@ -68,9 +68,9 @@
 - [x] JSON response
 
 ### Day 11: Web UI
-- [ ] index.html
-- [ ] CSS styling
-- [ ] JavaScript logic
+- [x] index.html
+- [x] CSS styling
+- [x] JavaScript logic
 
 ### Day 12: Optimization
 - [ ] Memory profiling
