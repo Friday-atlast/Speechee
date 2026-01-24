@@ -580,6 +580,28 @@ def cmd_language(args):
         print_error(f"Error: {e}")
         return 1
 
+def cmd_api(args):
+    """Handle 'api' command — Start REST API server."""
+    try:
+        from api.server import run_server
+        
+        print_info(f"Starting API server on {args.host}:{args.port}...")
+        
+        run_server(
+            host=args.host,
+            port=args.port,
+            reload=args.reload
+        )
+        return 0
+        
+    except ImportError as e:
+        print_error(f"API dependencies not installed: {e}")
+        print_info("Install with: pip install fastapi uvicorn python-multipart")
+        return 1
+    except Exception as e:
+        print_error(f"Error: {e}")
+        return 1
+
 # ================================================================
 # MAIN CLI
 # ================================================================
@@ -839,6 +861,25 @@ def create_parser():
         help="Model quality preference"
     )
 
+    # ---- api command ----
+    api_parser = subparsers.add_parser(
+        "api",
+        help="Start REST API server",
+        description="Start the Speechee REST API server."
+    )
+    api_parser.add_argument(
+        "--host", default="127.0.0.1",
+        help="Host to bind (default: 127.0.0.1)"
+    )
+    api_parser.add_argument(
+        "--port", type=int, default=8000,
+        help="Port to bind (default: 8000)"
+    )
+    api_parser.add_argument(
+        "--reload", action="store_true",
+        help="Enable auto-reload for development"
+    )
+
     return parser
 
 
@@ -864,6 +905,7 @@ def main():
         "config": cmd_config,
         "info": cmd_info,
         "language": cmd_language,
+        "api": cmd_api,
     }
     
     handler = commands.get(args.command)

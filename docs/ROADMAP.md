@@ -63,9 +63,9 @@
 - [x] Auto-detection
 
 ### Day 10: FastAPI Server
-- [ ] API endpoints
-- [ ] File upload
-- [ ] JSON response
+- [x] API endpoints
+- [x] File upload
+- [x] JSON response
 
 ### Day 11: Web UI
 - [ ] index.html
